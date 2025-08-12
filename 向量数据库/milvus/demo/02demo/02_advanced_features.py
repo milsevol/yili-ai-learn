@@ -41,19 +41,8 @@ class MilvusAdvancedDemo:
             consistency_level="Strong"
         )
         
-        # 创建索引
-        print("创建向量索引...")
-        index_params = {
-            "metric_type": "COSINE",
-            "index_type": "IVF_FLAT",
-            "params": {"nlist": 256}
-        }
-        
-        self.client.create_index(
-            collection_name=self.collection_name,
-            field_name="vector",
-            index_params=index_params
-        )
+        # Milvus Lite 会自动创建索引，无需手动创建
+        print("准备索引（Milvus Lite 自动索引）...")
         print("✓ 集合设置完成\n")
     
     def generate_sample_data(self, count: int) -> List[Dict[str, Any]]:

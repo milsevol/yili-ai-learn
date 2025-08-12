@@ -189,39 +189,54 @@ def metadata_filtering_demo(vector_store):
     print("1. 搜索高级难度的文档...")
     query = "人工智能技术"
     
-    # 创建带过滤条件的检索器
-    filtered_retriever = vector_store.as_retriever(
-        search_kwargs={
-            "k": 3,
-            "filter": {"difficulty": "高级"}
-        }
-    )
-    
-    filtered_docs = filtered_retriever.invoke(query)
-    
-    print("高级难度文档:")
-    for i, doc in enumerate(filtered_docs):
-        print(f"  {i+1}. {doc.page_content}")
-        print(f"     难度: {doc.metadata.get('difficulty')}")
-        print(f"     来源: {doc.metadata.get('source')}")
-        print()
+    # 使用 similarity_search 方法直接进行过滤搜索
+    try:
+        filtered_docs = vector_store.similarity_search(
+            query,
+            k=3,
+            expr="difficulty == '高级'"  # 使用 Milvus 表达式语法
+        )
+        
+        print("高级难度文档:")
+        for i, doc in enumerate(filtered_docs):
+            print(f"  {i+1}. {doc.page_content}")
+            print(f"     难度: {doc.metadata.get('difficulty')}")
+            print(f"     来源: {doc.metadata.get('source')}")
+            print()
+    except Exception as e:
+        print(f"   过滤搜索暂时不可用: {e}")
+        print("   执行普通搜索...")
+        filtered_docs = vector_store.similarity_search(query, k=3)
+        for i, doc in enumerate(filtered_docs):
+            if doc.metadata.get('difficulty') == '高级':
+                print(f"  {i+1}. {doc.page_content}")
+                print(f"     难度: {doc.metadata.get('difficulty')}")
+                print(f"     来源: {doc.metadata.get('source')}")
+                print()
     
     # 2. 按来源过滤
     print("2. 搜索论文来源的文档...")
-    paper_retriever = vector_store.as_retriever(
-        search_kwargs={
-            "k": 3,
-            "filter": {"source": "论文"}
-        }
-    )
-    
-    paper_docs = paper_retriever.invoke(query)
-    
-    print("论文来源文档:")
-    for i, doc in enumerate(paper_docs):
-        print(f"  {i+1}. {doc.page_content}")
-        print(f"     类别: {doc.metadata.get('category')}")
-        print()
+    try:
+        paper_docs = vector_store.similarity_search(
+            query,
+            k=3,
+            expr="source == '论文'"
+        )
+        
+        print("论文来源文档:")
+        for i, doc in enumerate(paper_docs):
+            print(f"  {i+1}. {doc.page_content}")
+            print(f"     类别: {doc.metadata.get('category')}")
+            print()
+    except Exception as e:
+        print(f"   过滤搜索暂时不可用: {e}")
+        print("   执行普通搜索...")
+        paper_docs = vector_store.similarity_search(query, k=3)
+        for i, doc in enumerate(paper_docs):
+            if doc.metadata.get('source') == '论文':
+                print(f"  {i+1}. {doc.page_content}")
+                print(f"     类别: {doc.metadata.get('category')}")
+                print()
 
 def document_management_demo(vector_store):
     """文档管理演示"""
