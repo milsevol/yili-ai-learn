@@ -61,20 +61,11 @@ def main():
     insert_time = time.time() - start_time
     print(f"✓ 数据插入完成，耗时: {insert_time:.2f} 秒\n")
     
-    # 5. 创建索引
-    print("5. 创建向量索引...")
-    index_params = {
-        "metric_type": "L2",
-        "index_type": "IVF_FLAT",
-        "params": {"nlist": 128}
-    }
-    
-    client.create_index(
-        collection_name=collection_name,
-        field_name="vector",
-        index_params=index_params
-    )
-    print("✓ 索引创建成功\n")
+    # 5. 创建索引（Milvus Lite 会自动创建索引）
+    print("5. 准备索引（Milvus Lite 自动索引）...")
+    # 在 Milvus Lite 中，索引会在第一次搜索时自动创建
+    # 这里我们可以跳过手动创建索引的步骤
+    print("✓ Milvus Lite 将在搜索时自动创建索引\n")
     
     # 6. 执行向量搜索
     print("6. 执行向量搜索...")
