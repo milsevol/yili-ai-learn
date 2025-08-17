@@ -61,8 +61,16 @@ Zilliz Cloud 是 Milvus 的官方云服务，提供完全托管的向量数据�
 ### 1. 注册 Zilliz Cloud 账户
 
 #### 访问官网
+国际
+
 ```
 https://cloud.zilliz.com/
+```
+
+国内
+
+```
+https://cloud.zilliz.com.cn/
 ```
 
 #### 注册流程
@@ -338,7 +346,7 @@ def scale_cluster(cluster_id, new_cu_size, api_key):
 
 #### 基础连接配置
 ```python
-from pymilvus import MilvusClient
+from pymilvus import x
 import os
 
 # 方式1: 直接配置连接参数

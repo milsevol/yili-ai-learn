@@ -1,0 +1,161 @@
+import configparser
+import time
+import random
+import os
+
+from pymilvus import DataType
+from pymilvus import MilvusClient
+
+# 读取配置文件
+config = configparser.ConfigParser()
+config_file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config.ini')
+config.read(config_file_path)
+
+# 获取Milvus连接信息
+milvus_uri = config.get('example', 'uri')
+api_key = config.get('example', 'token')
+
+# 用户名和密码 - 从用户提供的信息中获取
+user = "db_c3809e4b376b81e"
+password = "db_c3809e4b376b81e"
+
+print(f"milvus_uri: {milvus_uri}")
+print(f"api_key: {api_key}")
+print(f"user: {user}")
+print(f"password: {password}")
+
+# 根据Zilliz Cloud文档连接到serverless实例
+try:
+    # 确保URI格式正确
+    if not milvus_uri.startswith("https://"):
+        milvus_uri = f"https://{milvus_uri}"
+    
+    # 移除URI中可能存在的端口号
+    if ":443" in milvus_uri:
+        milvus_uri = milvus_uri.replace(":443", "")
+    
+    print(f"Using URI: {milvus_uri}")
+    
+    # 尝试使用API Key连接 - 通过HTTP API测试已确认可行
+    print("\n尝试使用API Key连接...")
+    milvus_client = MilvusClient(
+        uri=milvus_uri,
+        token=api_key
+    )
+    print(f"使用API Key创建MilvusClient成功")
+    
+    # 检查连接是否成功
+    collections = milvus_client.list_collections()
+    print(f"Available collections: {collections}")
+    print("\n成功连接到Zilliz Cloud!")
+    
+except Exception as e:
+    print(f"API Key connection error: {e}")
+    
+    try:
+        # 尝试使用用户名和密码连接 - 官方推荐格式
+        print("\n尝试使用用户名和密码连接(官方推荐格式)...")
+        # 创建用户名:密码格式的token
+        user_pass_token = f"{user}:{password}"
+        print(f"Using user:pass token: {user_pass_token}")
+        
+        milvus_client = MilvusClient(
+            uri=milvus_uri,
+            token=user_pass_token
+        )
+        print(f"使用用户名密码创建MilvusClient成功")
+        
+        # 检查连接是否成功
+        collections = milvus_client.list_collections()
+        print(f"Available collections: {collections}")
+        print("\n成功连接到Zilliz Cloud!")
+        
+    except Exception as e2:
+        print(f"User/pass connection error: {e2}")
+        
+        try:
+            # 尝试直接使用用户名和密码参数
+            print("\n尝试直接使用用户名和密码参数连接...")
+            milvus_client = MilvusClient(
+                uri=milvus_uri,
+                user=user,
+                password=password
+            )
+            print(f"使用用户名密码参数创建MilvusClient成功")
+            
+            # 检查连接是否成功
+            collections = milvus_client.list_collections()
+            print(f"Available collections: {collections}")
+            print("\n成功连接到Zilliz Cloud!")
+            
+        except Exception as e3:
+            print(f"Direct user/pass connection error: {e3}")
+            raise e
+
+
+# Check if the collection exists
+collection_name = "book"
+check_collection = milvus_client.has_collection(collection_name)
+
+if check_collection:
+    milvus_client.drop_collection(collection_name)
+    print(f"Dropped the existing collection {collection_name} successfully")
+
+dim = 64
+
+print("Start to create the collection schema")
+schema = milvus_client.create_schema()
+schema.add_field("book_id", DataType.INT64, is_primary=True, description="customized primary id")
+schema.add_field("word_count", DataType.INT64, description="word count")
+schema.add_field("book_intro", DataType.FLOAT_VECTOR, dim=dim, description="book introduction")
+print("Start to prepare index parameters with default AUTOINDEX")
+index_params = milvus_client.prepare_index_params()
+index_params.add_index("book_intro", metric_type="L2")
+
+print(f"Start to create example collection: {collection_name}")
+# create collection with the above schema and index parameters, and then load automatically
+milvus_client.create_collection(collection_name, schema=schema, index_params=index_params)
+collection_property = milvus_client.describe_collection(collection_name)
+print("Collection details: %s" % collection_property)
+
+# insert data with customized ids
+nb = 1000
+insert_rounds = 2
+start = 0           # first primary key id
+total_rt = 0        # total response time for inert
+
+print(f"Start to insert {nb*insert_rounds} entities into example collection: {collection_name}")
+for i in range(insert_rounds):
+    vector = [random.random() for _ in range(dim)]
+    rows = [{"book_id": i, "word_count": random.randint(1, 100), "book_intro": vector} for i in range(start, start+nb)]
+    t0 = time.time()
+    milvus_client.insert(collection_name, rows)
+    ins_rt = time.time() - t0
+    start += nb
+    total_rt += ins_rt
+print(f"Insert completed in {round(total_rt,4)} seconds")
+
+print("Start to flush")
+start_flush = time.time()
+milvus_client.flush(collection_name)
+end_flush = time.time()
+print(f"Flush completed in {round(end_flush - start_flush, 4)} seconds")
+
+# search
+nq = 3
+search_params = {"metric_type": "L2",  "params": {"level": 2}}
+limit = 2
+
+for i in range(5):
+   search_vectors = [[random.random() for _ in range(dim)] for _ in range(nq)]
+   t0 = time.time()
+   results = milvus_client.search(collection_name,
+                                  data=search_vectors,
+                                  limit=limit,
+                                  search_params=search_params,
+                                  anns_field="book_intro")
+   t1 = time.time()
+   assert len(results) == nq
+   assert len(results[0]) == limit
+   print(f"Search {i} results: {results}")
+   print(f"Search {i} latency: {round(t1-t0, 4)} seconds")
