@@ -16,8 +16,8 @@ milvus_uri = config.get('example', 'uri')
 api_key = config.get('example', 'token')
 
 # 用户名和密码 - 从用户提供的信息中获取
-user = "db_c3809e4b376b81e"
-password = "db_c3809e4b376b81e"
+user = "test"
+password = "test"
 
 print(f"milvus_uri: {milvus_uri}")
 print(f"api_key: {api_key}")
